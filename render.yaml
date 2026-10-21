@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: lista-presenca-dsp5
+    runtime: node
+    plan: free
+    buildCommand: echo ok
+    startCommand: node server.js
+    envVars:
+      - key: PIN
+        sync: false
