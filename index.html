@@ -25,31 +25,33 @@ h2{margin:14px 14px 6px;font-size:14px;color:#47566b;text-transform:uppercase;le
 <div class="bar"><input id="q" placeholder="Buscar nome ou rota" oninput="render()"><button onclick="addRow()">+ Adicionar</button></div>
 <div id="list"></div><div id="empty" style="display:none;padding:30px;text-align:center;color:#5a6a80">Lista ainda não carregada. Aguarde o dispatcher carregar a escala do dia.</div>
 <script>
-let PIN=localStorage.getItem('pin')||'',S=null,es=null,editing=false;
+const SB_URL='https://spuylttocotmljyrxdqa.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwdXlsdHRvY290bWxqeXJ4ZHFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2MTIxODYsImV4cCI6MjEwODE4ODE4Nn0.FW6wbqxO5rSkgUe8lU9WgVl2TVN-VotY3l_AUhAaR4I';
+let PIN=localStorage.getItem('pin')||'',S=null,timer=null,editing=false,lastOk=0;
 const $=id=>document.getElementById(id);
-const H={'Content-Type':'application/json'};
-function hd(){return {...H,'x-pin':PIN}}
-async function go(){PIN=$('pin').value.trim();const r=await fetch('/api/state',{headers:hd()});if(r.status!==200){$('err').textContent='PIN inválido';return}localStorage.setItem('pin',PIN);$('login').style.display='none';S=await r.json();render();connect()}
+const hd=()=>({apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json','x-pin':PIN});
+const nowHM=()=>new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
+async function fetchRows(){const r=await fetch(SB_URL+'/rest/v1/lista?select=*&order=ord.asc',{headers:hd()});if(r.status===401||r.status===403)throw new Error('pin');if(!r.ok)throw new Error('net');return (await r.json()).map(x=>({id:x.id,rota:x.rota,hora:x.hora,dsp:x.dsp,nome:x.nome,reserva:x.reserva,status:x.status||'',marcadoEm:x.marcado_em||'',obs:x.obs||'',dia:x.dia}))}
+async function pinOk(){const r=await fetch(SB_URL+'/rest/v1/rpc/pin_ok',{method:'POST',headers:hd(),body:'{}'});return r.ok&&(await r.json())===true}
+async function go(){PIN=$('pin').value.trim();try{if(!(await pinOk())){$('err').textContent='PIN inválido';return}const rows=await fetchRows();localStorage.setItem('pin',PIN);$('login').style.display='none';S={rows};start()}catch(e){$('err').textContent='Sem conexão'}}
 $('pin').addEventListener('keydown',e=>{if(e.key==='Enter')go()});
-function connect(){if(es)es.close();es=new EventSource('/api/events?pin='+encodeURIComponent(PIN));
- es.onopen=()=>{$('live').className='live on';$('live').lastChild.textContent='ao vivo'};
- es.onerror=()=>{$('live').className='live';$('live').lastChild.textContent='reconectando'};
- es.onmessage=e=>{S=JSON.parse(e.data);if(S.rows.length){localStorage.setItem('bk',JSON.stringify(S))}else{try{const b=JSON.parse(localStorage.getItem('bk')||'null');if(b&&b.rows.length&&Date.now()-new Date(b.updatedAt)<432e5)api('/api/load',b)}catch{}}if(!editing)render()}}
-function api(p,b){return fetch(p,{method:'POST',headers:hd(),body:JSON.stringify(b)})}
-function setS(id,s){const r=S.rows.find(x=>x.id===id);api('/api/update',{id,status:r.status===s?'':s})}
-let tm={};function setO(id,v){clearTimeout(tm[id]);tm[id]=setTimeout(()=>api('/api/update',{id,obs:v}),400)}
-function addRow(){const nome=prompt('Nome do motorista:');if(!nome)return;const rota=prompt('Rota (opcional, vazio = reserva):')||'';const hora=rota?(prompt('Horário (ex: 16:15):')||''):'';api('/api/add',{nome,rota,hora})}
+async function poll(){try{const rows=await fetchRows();lastOk=Date.now();S={rows};$('live').className='live on';$('live').lastChild.textContent='ao vivo';if(!editing)render()}catch(e){$('live').className='live';$('live').lastChild.textContent=e.message==='pin'?'PIN mudou':'reconectando'}}
+function start(){render();clearInterval(timer);timer=setInterval(poll,2000);poll()}
+function patch(id,b){return fetch(SB_URL+'/rest/v1/lista?id=eq.'+encodeURIComponent(id),{method:'PATCH',headers:hd(),body:JSON.stringify(b)})}
+function setS(id,s){const r=S.rows.find(x=>x.id===id);const ns=r.status===s?'':s;r.status=ns;r.marcadoEm=ns?nowHM():'';render();patch(id,{status:ns,marcado_em:r.marcadoEm})}
+let tm={};function setO(id,v){const r=S.rows.find(x=>x.id===id);if(r)r.obs=v;clearTimeout(tm[id]);tm[id]=setTimeout(()=>patch(id,{obs:v}),400)}
+async function addRow(){const nome=prompt('Nome do motorista:');if(!nome)return;const rota=prompt('Rota (opcional, vazio = reserva):')||'';const hora=rota?(prompt('Horário (ex: 16:15):')||''):'';const dia=(S.rows[0]||{}).dia||'';await fetch(SB_URL+'/rest/v1/lista',{method:'POST',headers:hd(),body:JSON.stringify({id:'x'+Date.now(),ord:9999,rota,hora,dsp:'',nome,reserva:!rota,dia})});poll()}
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function rowH(r){return `<div class="row ${r.status}"><div class="rota">${esc(r.rota)||'—'}</div><div class="dsp">${esc(r.dsp)}</div><div class="nome">${esc(r.nome)}${r.marcadoEm?`<small>${r.status} às ${esc(r.marcadoEm)}</small>`:''}</div>
 <div class="btns"><button class="p ${r.status==='presente'?'on':''}" onclick="setS('${r.id}','presente')">Presente</button><button class="a ${r.status==='atrasado'?'on':''}" onclick="setS('${r.id}','atrasado')">Atrasado</button></div>
 <div class="obs"><input placeholder="Observação" value="${esc(r.obs)}" onfocus="editing=true" onblur="editing=false;render()" oninput="setO('${r.id}',this.value)"></div></div>`}
-function render(){if(!S)return;$('data').textContent=S.date;$('upd').textContent='Atualizado '+new Date(S.updatedAt||Date.now()).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+function render(){if(!S)return;$('data').textContent=(S.rows[0]||{}).dia||'';$('upd').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
  const q=$('q').value.toLowerCase();const rows=S.rows.filter(r=>!q||(r.nome+' '+r.rota).toLowerCase().includes(q));
  const c=k=>S.rows.filter(r=>r.status===k).length,tot=S.rows.length;
  $('stats').innerHTML=`<span class="chip">Total <b>${tot}</b></span><span class="chip">Presentes <b>${c('presente')}</b></span><span class="chip">Atrasados <b>${c('atrasado')}</b></span><span class="chip">Pendentes <b>${tot-c('presente')-c('atrasado')}</b></span>`;
  const g={};rows.filter(r=>!r.reserva).forEach(r=>(g[r.hora||'?']=g[r.hora||'?']||[]).push(r));
  let h='';Object.keys(g).sort().forEach(k=>{h+=`<h2>Saída ${k}</h2>`+g[k].map(rowH).join('')});
  const rs=rows.filter(r=>r.reserva);if(rs.length)h+='<h2>Reservas</h2>'+rs.map(rowH).join('');
- $('empty').style.display=S.rows.length?'none':'block';const act=document.activeElement;if(act&&act.closest&&act.closest('.obs'))return;$('list').innerHTML=h}
-if(PIN){fetch('/api/state',{headers:hd()}).then(r=>r.status===200?(S=null,r.json()):Promise.reject()).then(s=>{S=s;$('login').style.display='none';render();connect()}).catch(()=>{})}
+ $('empty').style.display=S.rows.length?'none':'block';
+ const act=document.activeElement;if(act&&act.closest&&act.closest('.obs'))return;$('list').innerHTML=h}
+if(PIN){pinOk().then(ok=>ok?fetchRows():Promise.reject()).then(rows=>{$('login').style.display='none';S={rows};start()}).catch(()=>{localStorage.removeItem('pin')})}
 </script></body></html>
