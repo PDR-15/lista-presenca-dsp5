@@ -1,0 +1,55 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lista de Presença</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,Arial,sans-serif;background:#f3f5f8;color:#1b2430}
+header{position:sticky;top:0;z-index:5;background:#16253b;color:#fff;padding:10px 14px}
+header h1{margin:0;font-size:17px}header .sub{font-size:12px;opacity:.75}
+.stats{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}.chip{background:#ffffff1f;border-radius:14px;padding:3px 10px;font-size:13px}
+.chip b{font-size:15px}.live{float:right;font-size:12px}.live i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#e55;margin-right:4px}.live.on i{background:#3c6}
+.bar{display:flex;gap:8px;padding:10px 14px;flex-wrap:wrap}.bar input{flex:1;min-width:160px;padding:8px;border:1px solid #c5ccd6;border-radius:8px;font-size:15px}
+.bar button{padding:8px 12px;border:0;border-radius:8px;background:#16253b;color:#fff;font-size:14px}
+h2{margin:14px 14px 6px;font-size:14px;color:#47566b;text-transform:uppercase;letter-spacing:.04em}
+.row{display:grid;grid-template-columns:54px 46px 1fr auto;gap:8px;align-items:center;background:#fff;margin:0 10px 6px;padding:8px 10px;border-radius:10px;border-left:5px solid #cfd6e0}
+.row.presente{border-left-color:#2e9d57;background:#f1faf4}.row.atrasado{border-left-color:#e8a100;background:#fff8e8}
+.rota{font-weight:700}.dsp{font-size:12px;color:#5a6a80}.nome{font-size:15px}.nome small{display:block;color:#7a8799;font-size:11px}
+.btns{display:flex;gap:6px}.btns button{padding:7px 10px;border-radius:8px;border:1px solid #c5ccd6;background:#fff;font-size:13px}
+.btns .p.on{background:#2e9d57;color:#fff;border-color:#2e9d57}.btns .a.on{background:#e8a100;color:#fff;border-color:#e8a100}
+.obs{grid-column:1/-1}.obs input{width:100%;padding:7px;border:1px solid #d6dce5;border-radius:8px;font-size:14px}
+#login{position:fixed;inset:0;background:#16253b;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:12px;z-index:10}
+#login input{font-size:28px;text-align:center;width:160px;padding:8px;border-radius:10px;border:0;letter-spacing:.3em}
+#login button{padding:10px 24px;font-size:16px;border:0;border-radius:10px}
+@media(max-width:560px){.row{grid-template-columns:48px 1fr auto}.dsp{display:none}.row .hh{display:none}}
+</style></head><body>
+<div id="login"><div style="font-size:20px">Lista de Presença</div><div>Digite o PIN</div><input id="pin" inputmode="numeric" maxlength="8" autofocus><button onclick="go()">Entrar</button><div id="err" style="color:#f99"></div></div>
+<header><span class="live" id="live"><i></i><span>conectando</span></span><h1>Lista de Presença · <span id="data"></span></h1><div class="sub" id="upd"></div><div class="stats" id="stats"></div></header>
+<div class="bar"><input id="q" placeholder="Buscar nome ou rota" oninput="render()"><button onclick="addRow()">+ Adicionar</button></div>
+<div id="list"></div><div id="empty" style="display:none;padding:30px;text-align:center;color:#5a6a80">Lista ainda não carregada. Aguarde o dispatcher carregar a escala do dia.</div>
+<script>
+let PIN=localStorage.getItem('pin')||'',S=null,es=null,editing=false;
+const $=id=>document.getElementById(id);
+const H={'Content-Type':'application/json'};
+function hd(){return {...H,'x-pin':PIN}}
+async function go(){PIN=$('pin').value.trim();const r=await fetch('/api/state',{headers:hd()});if(r.status!==200){$('err').textContent='PIN inválido';return}localStorage.setItem('pin',PIN);$('login').style.display='none';S=await r.json();render();connect()}
+$('pin').addEventListener('keydown',e=>{if(e.key==='Enter')go()});
+function connect(){if(es)es.close();es=new EventSource('/api/events?pin='+encodeURIComponent(PIN));
+ es.onopen=()=>{$('live').className='live on';$('live').lastChild.textContent='ao vivo'};
+ es.onerror=()=>{$('live').className='live';$('live').lastChild.textContent='reconectando'};
+ es.onmessage=e=>{S=JSON.parse(e.data);if(S.rows.length){localStorage.setItem('bk',JSON.stringify(S))}else{try{const b=JSON.parse(localStorage.getItem('bk')||'null');if(b&&b.rows.length&&Date.now()-new Date(b.updatedAt)<432e5)api('/api/load',b)}catch{}}if(!editing)render()}}
+function api(p,b){return fetch(p,{method:'POST',headers:hd(),body:JSON.stringify(b)})}
+function setS(id,s){const r=S.rows.find(x=>x.id===id);api('/api/update',{id,status:r.status===s?'':s})}
+let tm={};function setO(id,v){clearTimeout(tm[id]);tm[id]=setTimeout(()=>api('/api/update',{id,obs:v}),400)}
+function addRow(){const nome=prompt('Nome do motorista:');if(!nome)return;const rota=prompt('Rota (opcional, vazio = reserva):')||'';const hora=rota?(prompt('Horário (ex: 16:15):')||''):'';api('/api/add',{nome,rota,hora})}
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function rowH(r){return `<div class="row ${r.status}"><div class="rota">${esc(r.rota)||'—'}</div><div class="dsp">${esc(r.dsp)}</div><div class="nome">${esc(r.nome)}${r.marcadoEm?`<small>${r.status} às ${esc(r.marcadoEm)}</small>`:''}</div>
+<div class="btns"><button class="p ${r.status==='presente'?'on':''}" onclick="setS('${r.id}','presente')">Presente</button><button class="a ${r.status==='atrasado'?'on':''}" onclick="setS('${r.id}','atrasado')">Atrasado</button></div>
+<div class="obs"><input placeholder="Observação" value="${esc(r.obs)}" onfocus="editing=true" onblur="editing=false;render()" oninput="setO('${r.id}',this.value)"></div></div>`}
+function render(){if(!S)return;$('data').textContent=S.date;$('upd').textContent='Atualizado '+new Date(S.updatedAt||Date.now()).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+ const q=$('q').value.toLowerCase();const rows=S.rows.filter(r=>!q||(r.nome+' '+r.rota).toLowerCase().includes(q));
+ const c=k=>S.rows.filter(r=>r.status===k).length,tot=S.rows.length;
+ $('stats').innerHTML=`<span class="chip">Total <b>${tot}</b></span><span class="chip">Presentes <b>${c('presente')}</b></span><span class="chip">Atrasados <b>${c('atrasado')}</b></span><span class="chip">Pendentes <b>${tot-c('presente')-c('atrasado')}</b></span>`;
+ const g={};rows.filter(r=>!r.reserva).forEach(r=>(g[r.hora||'?']=g[r.hora||'?']||[]).push(r));
+ let h='';Object.keys(g).sort().forEach(k=>{h+=`<h2>Saída ${k}</h2>`+g[k].map(rowH).join('')});
+ const rs=rows.filter(r=>r.reserva);if(rs.length)h+='<h2>Reservas</h2>'+rs.map(rowH).join('');
+ $('empty').style.display=S.rows.length?'none':'block';const act=document.activeElement;if(act&&act.closest&&act.closest('.obs'))return;$('list').innerHTML=h}
+if(PIN){fetch('/api/state',{headers:hd()}).then(r=>r.status===200?(S=null,r.json()):Promise.reject()).then(s=>{S=s;$('login').style.display='none';render();connect()}).catch(()=>{})}
+</script></body></html>
