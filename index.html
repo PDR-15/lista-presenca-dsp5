@@ -8,12 +8,19 @@ header h1{margin:0;font-size:17px}header select{font-size:16px;font-weight:700;b
 .chip b{font-size:15px}.live{float:right;font-size:12px}.live i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#e55;margin-right:4px}.live.on i{background:#3c6}
 .bar{display:flex;gap:8px;padding:10px 14px;flex-wrap:wrap}.bar input{flex:1;min-width:160px;padding:8px;border:1px solid #c5ccd6;border-radius:8px;font-size:15px}
 .bar button{padding:8px 12px;border:0;border-radius:8px;background:#16253b;color:#fff;font-size:14px}
-h2{margin:14px 14px 6px;font-size:14px;color:#47566b;text-transform:uppercase;letter-spacing:.04em}
-.row{display:grid;grid-template-columns:54px 46px 1fr auto;gap:8px;align-items:center;background:#fff;margin:0 10px 6px;padding:8px 10px;border-radius:10px;border-left:5px solid #cfd6e0}
-.row.presente{border-left-color:#2e9d57;background:#f1faf4}.row.atrasado{border-left-color:#e8a100;background:#fff8e8}
-.rota{font-weight:700}.dsp{font-size:12px;color:#5a6a80}.nome{font-size:15px}.nome small{display:block;color:#7a8799;font-size:11px}
-.btns{display:flex;gap:6px}.btns button{padding:7px 10px;border-radius:8px;border:1px solid #c5ccd6;background:#fff;font-size:13px}
-.btns .p.on{background:#2e9d57;color:#fff;border-color:#2e9d57}.btns .a.on{background:#e8a100;color:#fff;border-color:#e8a100}
+h2{margin:0}
+.slot{--c:#1d5fd1;display:flex;align-items:center;justify-content:space-between;margin:22px 0 8px;padding:10px 14px;background:var(--c);color:#fff;border-radius:0;box-shadow:0 2px 6px #0003}
+.slot .t{font-size:26px;font-weight:800;letter-spacing:.02em;line-height:1}.slot .t small{display:block;font-size:11px;font-weight:600;opacity:.85;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
+.slot .c{text-align:right;font-size:13px;line-height:1.25}.slot .c b{font-size:20px}
+.slot .bar2{position:absolute;left:0;bottom:0;height:4px;background:#fff8;width:0}
+.s0{--c:#1d5fd1}.s1{--c:#7a3fc4}.s2{--c:#0f8a7e}.s3{--c:#c25a12}.s4{--c:#b0275a}.sres{--c:#5b6677}
+.grp{border-left:6px solid;margin:0 0 4px;padding-top:6px;border-color:transparent}
+.grp.s0{border-color:#1d5fd1}.grp.s1{border-color:#7a3fc4}.grp.s2{border-color:#0f8a7e}.grp.s3{border-color:#c25a12}.grp.s4{border-color:#b0275a}.grp.sres{border-color:#5b6677}
+.row{display:grid;grid-template-columns:54px 46px 1fr auto;gap:8px;align-items:center;background:#fff;margin:0 8px 6px 10px;padding:10px 10px;border-radius:10px;border:1px solid #dfe4ec;border-left:6px solid #b9c2cf;box-shadow:0 1px 2px #0001}
+.row.presente{border-left-color:#1f9d4c;background:#e3f6ea;border-color:#b6e2c5}.row.atrasado{border-left-color:#e08a00;background:#fff0cf;border-color:#f0d18a}
+.rota{font-weight:800;font-size:16px}.dsp{font-size:12px;color:#5a6a80}.nome{font-size:15px}.nome small{display:block;color:#7a8799;font-size:11px}
+.btns{display:flex;gap:6px}.btns button{padding:10px 12px;border-radius:9px;border:1px solid #c5ccd6;background:#fff;font-size:14px;font-weight:600;min-width:84px}
+.btns .p{color:#17703a}.btns .a{color:#9a5b00}.btns .p.on{background:#1f9d4c;color:#fff;border-color:#1f9d4c}.btns .a.on{background:#e08a00;color:#fff;border-color:#e08a00}
 .obs{grid-column:1/-1}.obs input{width:100%;padding:7px;border:1px solid #d6dce5;border-radius:8px;font-size:14px}
 #login{position:fixed;inset:0;background:#16253b;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:12px;z-index:10}
 #login input{font-size:28px;text-align:center;width:160px;padding:8px;border-radius:10px;border:0;letter-spacing:.3em}
@@ -49,8 +56,10 @@ function render(){if(!S)return;$('data').textContent=(S.rows[0]||{}).dia||'';$('
  const c=k=>S.rows.filter(r=>r.status===k).length,tot=S.rows.length;
  $('stats').innerHTML=`<span class="chip">Total <b>${tot}</b></span><span class="chip">Presentes <b>${c('presente')}</b></span><span class="chip">Atrasados <b>${c('atrasado')}</b></span><span class="chip">Pendentes <b>${tot-c('presente')-c('atrasado')}</b></span>`;
  const g={};rows.filter(r=>!r.reserva).forEach(r=>(g[r.hora||'?']=g[r.hora||'?']||[]).push(r));
- let h='';Object.keys(g).sort().forEach(k=>{h+=`<h2>Saída ${k}</h2>`+g[k].map(rowH).join('')});
- const rs=rows.filter(r=>r.reserva);if(rs.length)h+='<h2>Reservas</h2>'+rs.map(rowH).join('');
+ let h='';const cnt=a=>({p:a.filter(r=>r.status==='presente').length,a:a.filter(r=>r.status==='atrasado').length,n:a.length});
+ const hdr=(cls,k,sub,a)=>{const c=cnt(a),ok=c.p+c.a;return `<div class="slot ${cls}"><div class="t"><small>${sub}</small>${k}</div><div class="c"><b>${ok}/${c.n}</b> chegaram<br>${c.p} presentes · ${c.a} atrasados</div></div>`};
+ Object.keys(g).sort().forEach((k,i)=>{const cls='s'+(i%5);h+=hdr(cls,k,'Saída',g[k])+`<div class="grp ${cls}">`+g[k].map(rowH).join('')+'</div>'});
+ const rs=rows.filter(r=>r.reserva);if(rs.length)h+=hdr('sres','Reservas','Sem rota',rs)+'<div class="grp sres">'+rs.map(rowH).join('')+'</div>';
  $('empty').style.display=S.rows.length?'none':'block';
  const act=document.activeElement;if(act&&act.closest&&act.closest('.obs'))return;$('list').innerHTML=h}
 
