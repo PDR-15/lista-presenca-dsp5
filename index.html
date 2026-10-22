@@ -50,18 +50,21 @@ let tm={};function setO(id,v){const r=S.rows.find(x=>x.id===id);if(r)r.obs=v;cle
 async function addRow(){const nome=prompt('Nome do motorista:');if(!nome)return;const rota=prompt('Rota (opcional, vazio = cancelado):')||'';const hora=rota?(prompt('Horário (ex: 16:15):')||''):'';const dia=(S.rows[0]||{}).dia||'';await fetch(SB_URL+'/rest/v1/lista',{method:'POST',headers:hd(),body:JSON.stringify({id:EST+'-x'+Date.now(),estacao:EST,ord:9999,rota,hora,dsp:'',nome,reserva:!rota,dia})});poll()}
 const OPEN=new Set();function openObs(id){OPEN.add(id);render();const i=document.querySelector('[data-o="'+id+'"]');if(i)i.focus()}
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function isX(r){return /^\(sem DA/.test(r.nome||'')}
+function rowX(r){return `<div class="row"><div class="rota">${esc(r.rota)||'—'}</div><div class="dsp">${esc(r.dsp)}</div><div class="nome">Sem DA atribuído<small>${esc(r.hora)}</small></div></div>`}
 function rowH(r){return `<div class="row ${r.status}"><div class="rota">${esc(r.rota)||'—'}</div><div class="dsp">${esc(r.dsp)}</div><div class="nome">${esc(r.nome)}${r.marcadoEm?`<small>${r.status} às ${esc(r.marcadoEm)}</small>`:''}</div>
 <div class="btns"><button class="p ${r.status==='presente'?'on':''}" onclick="setS('${r.id}','presente')">Presente</button><button class="a ${r.status==='atrasado'?'on':''}" onclick="setS('${r.id}','atrasado')">Atrasado</button></div>
 ${(r.obs||OPEN.has(r.id))?`<div class="obs"><input data-o="${r.id}" placeholder="Observação" value="${esc(r.obs)}" onfocus="editing=true" onblur="editing=false;if(!this.value)OPEN.delete('${r.id}');render()" oninput="setO('${r.id}',this.value)"></div>`:`<div class="obs"><button class="addobs" onclick="openObs('${r.id}')">+ Observação</button></div>`}</div>`}
 function render(){if(!S)return;$('data').textContent=(S.rows[0]||{}).dia||'';$('upd').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
  const q=$('q').value.toLowerCase();const rows=S.rows.filter(r=>!q||(r.nome+' '+r.rota).toLowerCase().includes(q));
- const c=k=>S.rows.filter(r=>r.status===k).length,tot=S.rows.length;
+ const base=S.rows.filter(r=>!isX(r));const c=k=>base.filter(r=>r.status===k).length,tot=base.length;
  $('stats').innerHTML=`<span class="chip">Total <b>${tot}</b></span><span class="chip">Presentes <b>${c('presente')}</b></span><span class="chip">Atrasados <b>${c('atrasado')}</b></span><span class="chip">Pendentes <b>${tot-c('presente')-c('atrasado')}</b></span>`;
- const g={};rows.filter(r=>!r.reserva).forEach(r=>(g[r.hora||'?']=g[r.hora||'?']||[]).push(r));
+ const g={};rows.filter(r=>!r.reserva&&!isX(r)).forEach(r=>(g[r.hora||'?']=g[r.hora||'?']||[]).push(r));
  let h='';const cnt=a=>({p:a.filter(r=>r.status==='presente').length,a:a.filter(r=>r.status==='atrasado').length,n:a.length});
  const hdr=(cls,k,sub,a)=>{const c=cnt(a),ok=c.p+c.a;return `<div class="slot ${cls}"><div class="t"><small>${sub}</small>${k}</div><div class="c"><b>${ok}/${c.n}</b> chegaram<br>${c.p} presentes · ${c.a} atrasados</div></div>`};
  Object.keys(g).sort().forEach((k,i)=>{const cls='s'+(i%5);h+=hdr(cls,k,'Saída',g[k])+`<div class="grp ${cls}">`+g[k].map(rowH).join('')+'</div>'});
- const rs=rows.filter(r=>r.reserva);if(rs.length)h+=hdr('sres','Cancelados','Sem rota',rs)+'<div class="grp sres">'+rs.map(rowH).join('')+'</div>';
+ const rs=rows.filter(r=>r.reserva&&!isX(r));if(rs.length)h+=hdr('sres','Cancelados','Sem rota',rs)+'<div class="grp sres">'+rs.map(rowH).join('')+'</div>';
+ const xs=rows.filter(r=>!r.reserva&&isX(r));if(xs.length)h+='<div class="slot sres"><div class="t"><small>Sem DA atribuído</small>ROTAS EXTRAS</div><div class="c"><b>'+xs.length+'</b> rotas</div></div>'+'<div class="grp sres">'+xs.map(rowX).join('')+'</div>';
  $('empty').style.display=S.rows.length?'none':'block';
  const act=document.activeElement;if(act&&act.tagName==='INPUT'&&act.closest&&act.closest('.obs'))return;$('list').innerHTML=h}
 
