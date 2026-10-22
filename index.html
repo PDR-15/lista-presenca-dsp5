@@ -21,7 +21,7 @@ h2{margin:0}
 .rota{font-weight:800;font-size:16px}.dsp{font-size:12px;color:#5a6a80}.nome{font-size:15px}.nome small{display:block;color:#7a8799;font-size:11px}
 .btns{display:flex;gap:6px}.btns button{padding:10px 12px;border-radius:9px;border:1px solid #c5ccd6;background:#fff;font-size:14px;font-weight:600;min-width:84px}
 .btns .p{color:#17703a}.btns .a{color:#9a5b00}.btns .p.on{background:#1f9d4c;color:#fff;border-color:#1f9d4c}.btns .a.on{background:#e08a00;color:#fff;border-color:#e08a00}
-.obs{grid-column:1/-1}.obs input{width:100%;padding:7px;border:1px solid #d6dce5;border-radius:8px;font-size:14px}
+.obs{grid-column:1/-1}.addobs{background:none;border:0;color:#5a6a80;font-size:13px;padding:2px 0;text-decoration:underline;text-underline-offset:3px}.obs input{width:100%;padding:7px;border:1px solid #d6dce5;border-radius:8px;font-size:14px}
 #login{position:fixed;inset:0;background:#16253b;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:12px;z-index:10}
 #login input{font-size:28px;text-align:center;width:160px;padding:8px;border-radius:10px;border:0;letter-spacing:.3em}
 #login button{padding:10px 24px;font-size:16px;border:0;border-radius:10px}
@@ -46,11 +46,12 @@ function start(){render();clearInterval(timer);timer=setInterval(poll,2000);poll
 function patch(id,b){return fetch(SB_URL+'/rest/v1/lista?id=eq.'+encodeURIComponent(id),{method:'PATCH',headers:hd(),body:JSON.stringify(b)})}
 function setS(id,s){const r=S.rows.find(x=>x.id===id);const ns=r.status===s?'':s;r.status=ns;r.marcadoEm=ns?nowHM():'';render();patch(id,{status:ns,marcado_em:r.marcadoEm})}
 let tm={};function setO(id,v){const r=S.rows.find(x=>x.id===id);if(r)r.obs=v;clearTimeout(tm[id]);tm[id]=setTimeout(()=>patch(id,{obs:v}),400)}
-async function addRow(){const nome=prompt('Nome do motorista:');if(!nome)return;const rota=prompt('Rota (opcional, vazio = reserva):')||'';const hora=rota?(prompt('Horário (ex: 16:15):')||''):'';const dia=(S.rows[0]||{}).dia||'';await fetch(SB_URL+'/rest/v1/lista',{method:'POST',headers:hd(),body:JSON.stringify({id:EST+'-x'+Date.now(),estacao:EST,ord:9999,rota,hora,dsp:'',nome,reserva:!rota,dia})});poll()}
+async function addRow(){const nome=prompt('Nome do motorista:');if(!nome)return;const rota=prompt('Rota (opcional, vazio = cancelado):')||'';const hora=rota?(prompt('Horário (ex: 16:15):')||''):'';const dia=(S.rows[0]||{}).dia||'';await fetch(SB_URL+'/rest/v1/lista',{method:'POST',headers:hd(),body:JSON.stringify({id:EST+'-x'+Date.now(),estacao:EST,ord:9999,rota,hora,dsp:'',nome,reserva:!rota,dia})});poll()}
+const OPEN=new Set();function openObs(id){OPEN.add(id);render();const i=document.querySelector('[data-o="'+id+'"]');if(i)i.focus()}
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function rowH(r){return `<div class="row ${r.status}"><div class="rota">${esc(r.rota)||'—'}</div><div class="dsp">${esc(r.dsp)}</div><div class="nome">${esc(r.nome)}${r.marcadoEm?`<small>${r.status} às ${esc(r.marcadoEm)}</small>`:''}</div>
 <div class="btns"><button class="p ${r.status==='presente'?'on':''}" onclick="setS('${r.id}','presente')">Presente</button><button class="a ${r.status==='atrasado'?'on':''}" onclick="setS('${r.id}','atrasado')">Atrasado</button></div>
-<div class="obs"><input placeholder="Observação" value="${esc(r.obs)}" onfocus="editing=true" onblur="editing=false;render()" oninput="setO('${r.id}',this.value)"></div></div>`}
+${(r.obs||OPEN.has(r.id))?`<div class="obs"><input data-o="${r.id}" placeholder="Observação" value="${esc(r.obs)}" onfocus="editing=true" onblur="editing=false;if(!this.value)OPEN.delete('${r.id}');render()" oninput="setO('${r.id}',this.value)"></div>`:`<div class="obs"><button class="addobs" onclick="openObs('${r.id}')">+ Observação</button></div>`}</div>`}
 function render(){if(!S)return;$('data').textContent=(S.rows[0]||{}).dia||'';$('upd').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
  const q=$('q').value.toLowerCase();const rows=S.rows.filter(r=>!q||(r.nome+' '+r.rota).toLowerCase().includes(q));
  const c=k=>S.rows.filter(r=>r.status===k).length,tot=S.rows.length;
@@ -59,7 +60,7 @@ function render(){if(!S)return;$('data').textContent=(S.rows[0]||{}).dia||'';$('
  let h='';const cnt=a=>({p:a.filter(r=>r.status==='presente').length,a:a.filter(r=>r.status==='atrasado').length,n:a.length});
  const hdr=(cls,k,sub,a)=>{const c=cnt(a),ok=c.p+c.a;return `<div class="slot ${cls}"><div class="t"><small>${sub}</small>${k}</div><div class="c"><b>${ok}/${c.n}</b> chegaram<br>${c.p} presentes · ${c.a} atrasados</div></div>`};
  Object.keys(g).sort().forEach((k,i)=>{const cls='s'+(i%5);h+=hdr(cls,k,'Saída',g[k])+`<div class="grp ${cls}">`+g[k].map(rowH).join('')+'</div>'});
- const rs=rows.filter(r=>r.reserva);if(rs.length)h+=hdr('sres','Reservas','Sem rota',rs)+'<div class="grp sres">'+rs.map(rowH).join('')+'</div>';
+ const rs=rows.filter(r=>r.reserva);if(rs.length)h+=hdr('sres','Cancelados','Sem rota',rs)+'<div class="grp sres">'+rs.map(rowH).join('')+'</div>';
  $('empty').style.display=S.rows.length?'none':'block';
  const act=document.activeElement;if(act&&act.closest&&act.closest('.obs'))return;$('list').innerHTML=h}
 
