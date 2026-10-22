@@ -62,7 +62,7 @@ function render(){if(!S)return;$('data').textContent=(S.rows[0]||{}).dia||'';$('
  Object.keys(g).sort().forEach((k,i)=>{const cls='s'+(i%5);h+=hdr(cls,k,'Saída',g[k])+`<div class="grp ${cls}">`+g[k].map(rowH).join('')+'</div>'});
  const rs=rows.filter(r=>r.reserva);if(rs.length)h+=hdr('sres','Cancelados','Sem rota',rs)+'<div class="grp sres">'+rs.map(rowH).join('')+'</div>';
  $('empty').style.display=S.rows.length?'none':'block';
- const act=document.activeElement;if(act&&act.closest&&act.closest('.obs'))return;$('list').innerHTML=h}
+ const act=document.activeElement;if(act&&act.tagName==='INPUT'&&act.closest&&act.closest('.obs'))return;$('list').innerHTML=h}
 
 let ENC={status:''};
 function setEst(v){EST=v;localStorage.setItem('est',v);S={rows:[]};ENC={status:''};render();renderEnc();poll()}
