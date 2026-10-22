@@ -3,7 +3,7 @@
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,Arial,sans-serif;background:#f3f5f8;color:#1b2430}
 header{position:sticky;top:0;z-index:5;background:#16253b;color:#fff;padding:10px 14px}
-header h1{margin:0;font-size:17px}header .sub{font-size:12px;opacity:.75}
+header h1{margin:0;font-size:17px}header select{font-size:16px;font-weight:700;border-radius:6px;border:0;padding:2px 4px}header .sub{font-size:12px;opacity:.75}
 .stats{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}.chip{background:#ffffff1f;border-radius:14px;padding:3px 10px;font-size:13px}
 .chip b{font-size:15px}.live{float:right;font-size:12px}.live i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#e55;margin-right:4px}.live.on i{background:#3c6}
 .bar{display:flex;gap:8px;padding:10px 14px;flex-wrap:wrap}.bar input{flex:1;min-width:160px;padding:8px;border:1px solid #c5ccd6;border-radius:8px;font-size:15px}
@@ -22,16 +22,16 @@ h2{margin:14px 14px 6px;font-size:14px;color:#47566b;text-transform:uppercase;le
 @media(max-width:560px){.row{grid-template-columns:48px 1fr auto}.dsp{display:none}.row .hh{display:none}}
 </style></head><body>
 <div id="login"><div style="font-size:20px">Lista de Presença</div><div>Digite o PIN</div><input id="pin" inputmode="numeric" maxlength="8" autofocus><button onclick="go()">Entrar</button><div id="err" style="color:#f99"></div></div>
-<header><span class="live" id="live"><i></i><span>conectando</span></span><h1>Lista de Presença · <span id="data"></span></h1><div class="sub" id="upd"></div><div class="stats" id="stats"></div></header>
+<header><span class="live" id="live"><i></i><span>conectando</span></span><h1>Lista de Presença · <select id="est" onchange="setEst(this.value)"><option>DSP5</option><option>DCP5</option></select> · <span id="data"></span></h1><div class="sub" id="upd"></div><div class="stats" id="stats"></div></header>
 <div class="bar"><input id="q" placeholder="Buscar nome ou rota" oninput="render()"><button onclick="addRow()">+ Adicionar</button></div>
-<div id="list"></div><div id="enc"></div><div id="empty" style="display:none;padding:30px;text-align:center;color:#5a6a80">Lista ainda não carregada. Aguarde o dispatcher carregar a escala do dia.</div>
+<div id="list"></div><div id="enc"></div><div id="empty" style="display:none;padding:30px;text-align:center;color:#5a6a80">Lista ainda não carregada. Aguarde o dispatcher carregar a escala desta estação.</div>
 <script>
 const SB_URL='https://spuylttocotmljyrxdqa.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwdXlsdHRvY290bWxqeXJ4ZHFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2MTIxODYsImV4cCI6MjEwODE4ODE4Nn0.FW6wbqxO5rSkgUe8lU9WgVl2TVN-VotY3l_AUhAaR4I';
-let PIN=localStorage.getItem('pin')||'',S=null,timer=null,editing=false,lastOk=0;
+let EST=localStorage.getItem('est')||'DSP5',PIN=localStorage.getItem('pin')||'',S=null,timer=null,editing=false,lastOk=0;
 const $=id=>document.getElementById(id);
 const hd=()=>({apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json','x-pin':PIN});
 const nowHM=()=>new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
-async function fetchRows(){const r=await fetch(SB_URL+'/rest/v1/lista?select=*&order=ord.asc',{headers:hd()});if(r.status===401||r.status===403)throw new Error('pin');if(!r.ok)throw new Error('net');return (await r.json()).map(x=>({id:x.id,rota:x.rota,hora:x.hora,dsp:x.dsp,nome:x.nome,reserva:x.reserva,status:x.status||'',marcadoEm:x.marcado_em||'',obs:x.obs||'',dia:x.dia}))}
+async function fetchRows(){const r=await fetch(SB_URL+'/rest/v1/lista?select=*&estacao=eq.'+EST+'&order=ord.asc',{headers:hd()});if(r.status===401||r.status===403)throw new Error('pin');if(!r.ok)throw new Error('net');return (await r.json()).map(x=>({id:x.id,rota:x.rota,hora:x.hora,dsp:x.dsp,nome:x.nome,reserva:x.reserva,status:x.status||'',marcadoEm:x.marcado_em||'',obs:x.obs||'',dia:x.dia}))}
 async function go(){PIN=$('pin').value.trim();try{const rows=await fetchRows();localStorage.setItem('pin',PIN);$('login').style.display='none';S={rows};start()}catch(e){$('err').textContent='PIN inválido ou sem conexão'}}
 $('pin').addEventListener('keydown',e=>{if(e.key==='Enter')go()});
 async function poll(){try{const rows=await fetchRows();await fetchEnc();renderEnc();lastOk=Date.now();S={rows};$('live').className='live on';$('live').lastChild.textContent='ao vivo';if(!editing)render()}catch(e){$('live').className='live';$('live').lastChild.textContent=e.message==='pin'?'PIN mudou':'reconectando'}}
@@ -39,7 +39,7 @@ function start(){render();clearInterval(timer);timer=setInterval(poll,2000);poll
 function patch(id,b){return fetch(SB_URL+'/rest/v1/lista?id=eq.'+encodeURIComponent(id),{method:'PATCH',headers:hd(),body:JSON.stringify(b)})}
 function setS(id,s){const r=S.rows.find(x=>x.id===id);const ns=r.status===s?'':s;r.status=ns;r.marcadoEm=ns?nowHM():'';render();patch(id,{status:ns,marcado_em:r.marcadoEm})}
 let tm={};function setO(id,v){const r=S.rows.find(x=>x.id===id);if(r)r.obs=v;clearTimeout(tm[id]);tm[id]=setTimeout(()=>patch(id,{obs:v}),400)}
-async function addRow(){const nome=prompt('Nome do motorista:');if(!nome)return;const rota=prompt('Rota (opcional, vazio = reserva):')||'';const hora=rota?(prompt('Horário (ex: 16:15):')||''):'';const dia=(S.rows[0]||{}).dia||'';await fetch(SB_URL+'/rest/v1/lista',{method:'POST',headers:hd(),body:JSON.stringify({id:'x'+Date.now(),ord:9999,rota,hora,dsp:'',nome,reserva:!rota,dia})});poll()}
+async function addRow(){const nome=prompt('Nome do motorista:');if(!nome)return;const rota=prompt('Rota (opcional, vazio = reserva):')||'';const hora=rota?(prompt('Horário (ex: 16:15):')||''):'';const dia=(S.rows[0]||{}).dia||'';await fetch(SB_URL+'/rest/v1/lista',{method:'POST',headers:hd(),body:JSON.stringify({id:EST+'-x'+Date.now(),estacao:EST,ord:9999,rota,hora,dsp:'',nome,reserva:!rota,dia})});poll()}
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function rowH(r){return `<div class="row ${r.status}"><div class="rota">${esc(r.rota)||'—'}</div><div class="dsp">${esc(r.dsp)}</div><div class="nome">${esc(r.nome)}${r.marcadoEm?`<small>${r.status} às ${esc(r.marcadoEm)}</small>`:''}</div>
 <div class="btns"><button class="p ${r.status==='presente'?'on':''}" onclick="setS('${r.id}','presente')">Presente</button><button class="a ${r.status==='atrasado'?'on':''}" onclick="setS('${r.id}','atrasado')">Atrasado</button></div>
@@ -55,12 +55,14 @@ function render(){if(!S)return;$('data').textContent=(S.rows[0]||{}).dia||'';$('
  const act=document.activeElement;if(act&&act.closest&&act.closest('.obs'))return;$('list').innerHTML=h}
 
 let ENC={status:''};
-async function fetchEnc(){const r=await fetch(SB_URL+'/rest/v1/encerramento?select=*&id=eq.1',{headers:hd()});if(r.ok){const a=await r.json();if(a[0])ENC=a[0]}}
+function setEst(v){EST=v;localStorage.setItem('est',v);S={rows:[]};ENC={status:''};render();renderEnc();poll()}
+$('est').value=EST;
+async function fetchEnc(){const r=await fetch(SB_URL+'/rest/v1/encerramento?select=*&estacao=eq.'+EST+'&order=id',{headers:hd()});if(r.ok){const a=await r.json();ENC=a[0]||{status:''}}}
 function renderEnc(){const e=ENC,b=`<button onclick="encerrar()">${e.status==='enviado'?'Enviar novamente':'Todos chegaram: encerrar e enviar'}</button>`;
- let h='';if(e.status==='pedido')h=`<div class="wait">Pedido feito às ${esc(e.pedido_em)}. Aguardando envio ao SharePoint...</div><small>Pode levar alguns minutos.</small>`;
- else if(e.status==='enviado')h=`<div class="ok">Enviado ao SharePoint às ${esc(e.enviado_em)}</div><small>${esc(e.arquivo)}</small><div style="margin-top:10px">${b}</div>`;
+ let h='';if(e.status==='pedido')h=`<div class="wait">Pedido feito às ${esc(e.pedido_em)}. Aguardando gerar o arquivo...</div><small>Pode levar alguns minutos.</small>`;
+ else if(e.status==='enviado')h=`<div class="ok">Arquivo gerado às ${esc(e.enviado_em)}</div><small>${esc(e.arquivo)} (salvo na pasta Documentos do computador de quem carregou a lista)</small><div style="margin-top:10px">${b}</div>`;
  else h=b+'<small>Use quando todos os motoristas tiverem chegado.</small>';
  $('enc').innerHTML=h}
-async function encerrar(){if(!confirm('Todos os motoristas já chegaram? Isso vai enviar a lista final ao SharePoint.'))return;ENC={...ENC,status:'pedido',pedido_em:nowHM()};renderEnc();await fetch(SB_URL+'/rest/v1/encerramento?id=eq.1',{method:'PATCH',headers:hd(),body:JSON.stringify({status:'pedido',pedido_em:nowHM(),enviado_em:'',arquivo:''})})}
+async function encerrar(){if(!confirm('Todos os motoristas já chegaram? Isso vai gerar o arquivo final desta estação.'))return;ENC={...ENC,status:'pedido',pedido_em:nowHM()};renderEnc();await fetch(SB_URL+'/rest/v1/encerramento?estacao=eq.'+EST,{method:'PATCH',headers:hd(),body:JSON.stringify({status:'pedido',pedido_em:nowHM(),enviado_em:'',arquivo:''})})}
 if(PIN){fetchRows().then(rows=>{$('login').style.display='none';S={rows};start()}).catch(()=>{})}
 </script></body></html>
