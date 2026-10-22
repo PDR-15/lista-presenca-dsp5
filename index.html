@@ -27,10 +27,10 @@ h2{margin:0}
 #login button{padding:10px 24px;font-size:16px;border:0;border-radius:10px}
 #enc{margin:16px 10px 40px;padding:14px;background:#fff;border-radius:12px;text-align:center;border:1px solid #d6dce5}#enc button{padding:12px 18px;border:0;border-radius:10px;background:#16253b;color:#fff;font-size:15px;font-weight:600}#enc .ok{color:#2e9d57;font-weight:600}#enc .wait{color:#b57a00;font-weight:600}#enc small{display:block;margin-top:6px;color:#7a8799}
 @media(max-width:560px){.row{grid-template-columns:48px 1fr auto}.dsp{display:none}.row .hh{display:none}}
-.wm{text-align:center;font-size:11px;letter-spacing:.08em;color:#8a94a6;padding:4px 0;background:#f1f4f9;border-bottom:1px solid #e1e6ee}
+.wm{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#ffc266;opacity:.9;margin:-4px 0 4px;font-weight:600}
 </style></head><body>
 <div id="login"><div style="font-size:20px">Lista de Presença</div><div>Digite o PIN</div><input id="pin" inputmode="numeric" maxlength="8" autofocus><button onclick="go()">Entrar</button><div id="err" style="color:#f99"></div></div>
-<div class="wm">Made by pedndoss</div><header><span class="live" id="live"><i></i><span>conectando</span></span><h1>Lista de Presença · <select id="est" onchange="setEst(this.value)"><option>DSP5</option><option>DCP5</option></select> · <span id="data"></span></h1><div class="sub" id="upd"></div><div class="stats" id="stats"></div></header>
+<header><div class="wm">Made by pedndoss</div><span class="live" id="live"><i></i><span>conectando</span></span><h1>Lista de Presença · <select id="est" onchange="setEst(this.value)"><option>DSP5</option><option>DCP5</option></select> · <span id="data"></span></h1><div class="sub" id="upd"></div><div class="stats" id="stats"></div></header>
 <div class="bar"><input id="q" placeholder="Buscar nome ou rota" oninput="render()"><button onclick="addRow()">+ Adicionar</button></div>
 <div id="list"></div><div id="enc"></div><div id="empty" style="display:none;padding:30px;text-align:center;color:#5a6a80">Lista ainda não carregada. Aguarde o dispatcher carregar a escala desta estação.</div>
 <script>
