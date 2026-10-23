@@ -37,6 +37,14 @@ h2{margin:0}
 .imp h3{margin:0 0 4px}.imp .it{display:grid;grid-template-columns:24px 64px 1fr;gap:8px;align-items:center;padding:7px 0;border-top:1px solid #e5e9f0;font-size:14px}
 .imp .it s{color:#9a2f2f}.imp .it b{color:#17703a}.imp .warn{color:#9a5b00;font-size:12px}.imp .mut{color:#5a6a80;font-size:13px;margin:6px 0}
 .imp .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}.imp .acts button{padding:10px 16px;border-radius:9px;border:1px solid #c5ccd6;background:#fff;font-size:14px;font-weight:600}.imp .acts .go{background:#16253b;color:#fff;border-color:#16253b}
+#timer{margin:10px 14px 0;background:#fff;border:1px solid #d6dce5;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#timer .tt{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;min-width:100px}
+#timer .lb{font-size:12px;color:#5a6a80;text-transform:uppercase;letter-spacing:.06em}
+#timer .pg{flex:1;min-width:120px;height:10px;background:#e5e9f0;border-radius:6px;overflow:hidden}#timer .pg i{display:block;height:100%;width:0;background:#1d5fd1;transition:width .3s linear}
+#timer select,#timer button{padding:8px 10px;border-radius:9px;border:1px solid #c5ccd6;background:#fff;font-size:14px;font-weight:600}
+#timer button.go{background:#16253b;color:#fff;border-color:#16253b}
+#timer.am .tt{color:#b57a00}#timer.am .pg i{background:#e08a00}#timer.rd{border-color:#d33;background:#fff4f4}#timer.rd .tt{color:#c11}#timer.rd .pg i{background:#d33}
+#snd{display:none;margin:8px 14px 0;padding:8px;background:#fff3cd;border-radius:8px;font-size:13px;text-align:center}
 .btns2{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
 @media(max-width:560px){.row.ed{grid-template-columns:64px 1fr;}.row.ed .btns{grid-column:1/-1}}
 @media(max-width:560px){.row{grid-template-columns:48px 1fr auto}.dsp{display:none}.row .hh{display:none}}
@@ -44,6 +52,7 @@ h2{margin:0}
 </style></head><body>
 <div id="login"><div style="font-size:20px">Lista de Presença</div><div>Digite o PIN</div><input id="pin" inputmode="numeric" maxlength="8" autofocus><button onclick="go()">Entrar</button><div id="err" style="color:#f99"></div></div>
 <header><div class="wm">Made by pedndoss</div><span class="live" id="live"><i></i><span>conectando</span></span><h1>Lista de Presença<span class="role" id="role"></span><button class="sair" onclick="sair()">Sair</button> · <select id="est" onchange="setEst(this.value)"><option>DSP5</option><option>DCP5</option></select> · <span id="data"></span></h1><div class="sub" id="upd"></div><div class="stats" id="stats"></div></header>
+<div id="timer"><div><div class="lb">Timer da onda</div><div class="tt" id="tt">--:--</div></div><div class="pg"><i id="tp"></i></div><select id="tmin" onchange="timerMin(this.value)"><option value="15">15 min</option><option value="20">20 min</option></select><button id="tgo" class="go" onclick="timerStart()">Iniciar</button><button id="trs" onclick="timerStart()" style="display:none">Reiniciar</button><button id="tstop" onclick="timerStop()" style="display:none">Parar</button></div><div id="snd" onclick="audio();tick()">Toque aqui para ativar o som dos alertas neste aparelho</div>
 <div class="bar"><input id="q" placeholder="Buscar nome ou rota" oninput="render()"><button id="addbtn" onclick="addRow()" style="display:none">+ Adicionar</button><button id="impbtn" onclick="$('impfile').click()" style="display:none">Importar planilha</button><input type="file" id="impfile" accept=".csv,.xlsx,.xls" style="display:none" onchange="importar(this)"></div>
 <div id="imp" class="imp" style="display:none"></div><div id="list"></div><div id="enc"></div><div id="empty" style="display:none;padding:30px;text-align:center;color:#5a6a80">Lista ainda não carregada. Aguarde o dispatcher carregar a escala desta estação.</div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -118,7 +127,30 @@ async function aplicarImp(){const sel=[...document.querySelectorAll('#imp input[
 let ENC={status:''};
 function setEst(v){EST=v;localStorage.setItem('est',v);S={rows:[]};ENC={status:''};render();renderEnc();poll()}
 $('est').value=EST;
-async function fetchEnc(){const r=await fetch(SB_URL+'/rest/v1/encerramento?select=*&estacao=eq.'+EST+'&order=id',{headers:hd()});if(r.ok){const a=await r.json();ENC=a[0]||{status:''}}}
+async function fetchEnc(){const r=await fetch(SB_URL+'/rest/v1/encerramento?select=*&estacao=eq.'+EST+'&order=id',{headers:hd()});if(r.ok){const dh=r.headers.get('Date');if(dh){const d=new Date(dh).getTime();if(d)OFF=d-Date.now()}const a=await r.json(),n=a[0]||{status:''};
+ if(Date.now()<lockUntil){n.timer_inicio=ENC.timer_inicio;n.timer_ativo=ENC.timer_ativo;n.timer_min=ENC.timer_min}ENC=n}}
+let AC=null,OFF=0,fired={},lastC={},lockUntil=0,wl=null;
+function audio(){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}}
+document.addEventListener('click',audio);document.addEventListener('touchstart',audio);
+function beep(n,len,f){audio();try{navigator.vibrate&&navigator.vibrate(n>1?[200,100,200]:400)}catch(e){}if(!AC||AC.state!=='running')return;let t=AC.currentTime;for(let i=0;i<n;i++){const o=AC.createOscillator(),g=AC.createGain();o.type='square';o.frequency.value=f||880;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.35,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+len);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+len+0.05);t+=len+0.15}}
+function tset(b){ENC={...ENC,...b};lockUntil=Date.now()+3000;tick();return fetch(SB_URL+'/rest/v1/encerramento?estacao=eq.'+EST,{method:'PATCH',headers:hd(),body:JSON.stringify(b)})}
+function timerStart(){audio();tset({timer_inicio:Date.now()+OFF,timer_ativo:true,timer_min:+$('tmin').value})}
+function timerStop(){tset({timer_ativo:false})}
+function timerMin(v){tset(ENC.timer_ativo?{timer_min:+v,timer_inicio:Date.now()+OFF}:{timer_min:+v})}
+function tick(){const e=ENC,on=!!(e.timer_ativo&&e.timer_inicio),box=$('timer');
+ if(document.activeElement!==$('tmin'))$('tmin').value=String(e.timer_min||15);
+ $('tgo').style.display=on?'none':'';$('trs').style.display=on?'':'none';$('tstop').style.display=on?'':'none';
+ $('snd').style.display=on&&(!AC||AC.state!=='running')?'block':'none';
+ if(!on){$('tt').textContent='--:--';$('tp').style.width='0';box.className='';if(wl){try{wl.release()}catch(x){}wl=null}return}
+ if(!wl&&navigator.wakeLock){navigator.wakeLock.request('screen').then(w=>{wl=w;w.addEventListener('release',()=>{wl=null})}).catch(()=>{})}
+ const per=(e.timer_min||15)*60000,el=Math.max(0,Date.now()+OFF-e.timer_inicio),cyc=Math.floor(el/per),rem=per-(el%per),sec=Math.ceil(rem/1000);
+ const k=EST+'|'+e.timer_inicio;
+ if(lastC[k]!==undefined&&cyc>lastC[k])beep(1,0.9,660);lastC[k]=cyc;
+ [[300,2,.25],[120,2,.25],[60,3,.25]].forEach(([th,n,len])=>{const fk=k+'|'+cyc+'|'+th;if(sec<=th&&!fired[fk]){fired[fk]=1;if(sec>th-4)beep(n,len)}});
+ $('tt').textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
+ $('tp').style.width=(100*(1-rem/per)).toFixed(1)+'%';
+ box.className=sec<=120?'rd':sec<=300?'am':''}
+setInterval(tick,250);
 function renderEnc(){const e=ENC,fin=e.status==='enviado';
  $('enc').innerHTML=(fin?`<div class="ok">Relatório gerado às ${esc(e.enviado_em)}</div><small>${esc(e.arquivo)}</small><div class="btns2"><button onclick="baixar(false)">Baixar relatório novamente</button></div>`
   :`<button onclick="finalizar()">Finalizar e gerar relatório</button><small>Use quando todos os motoristas tiverem chegado. O arquivo é baixado neste aparelho.</small>`)}
@@ -135,6 +167,6 @@ function baixar(){const rows=relRows(),st=r=>r.status?r.status[0].toUpperCase()+
  return arq}
 async function finalizar(){if(!confirm('Todos os motoristas já chegaram? Isso vai gerar o relatório final desta estação.'))return;
  await poll();const arq=baixar();ENC={...ENC,status:'enviado',enviado_em:nowHM(),arquivo:arq};renderEnc();
- await fetch(SB_URL+'/rest/v1/encerramento?estacao=eq.'+EST,{method:'PATCH',headers:hd(),body:JSON.stringify({status:'enviado',enviado_em:nowHM(),arquivo:arq})})}
+ await fetch(SB_URL+'/rest/v1/encerramento?estacao=eq.'+EST,{method:'PATCH',headers:hd(),body:JSON.stringify({status:'enviado',enviado_em:nowHM(),arquivo:arq,timer_ativo:false})})}
 if(PIN){enter().catch(()=>{})}
 </script></body></html>
