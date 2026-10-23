@@ -32,6 +32,11 @@ h2{margin:0}
 .row.ed input.f{width:100%;padding:7px;border:1px solid #d6dce5;border-radius:8px;font-size:15px;background:#fff}
 .row.ed input.f.n{font-weight:600}
 .row.ed .del{background:none;border:0;color:#b02a2a;font-size:13px;text-decoration:underline;padding:2px 0}
+.imp{position:fixed;inset:0;background:#000a;z-index:20;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 10px}
+.imp .box{background:#fff;border-radius:12px;max-width:760px;width:100%;padding:16px}
+.imp h3{margin:0 0 4px}.imp .it{display:grid;grid-template-columns:24px 64px 1fr;gap:8px;align-items:center;padding:7px 0;border-top:1px solid #e5e9f0;font-size:14px}
+.imp .it s{color:#9a2f2f}.imp .it b{color:#17703a}.imp .warn{color:#9a5b00;font-size:12px}.imp .mut{color:#5a6a80;font-size:13px;margin:6px 0}
+.imp .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}.imp .acts button{padding:10px 16px;border-radius:9px;border:1px solid #c5ccd6;background:#fff;font-size:14px;font-weight:600}.imp .acts .go{background:#16253b;color:#fff;border-color:#16253b}
 .btns2{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
 @media(max-width:560px){.row.ed{grid-template-columns:64px 1fr;}.row.ed .btns{grid-column:1/-1}}
 @media(max-width:560px){.row{grid-template-columns:48px 1fr auto}.dsp{display:none}.row .hh{display:none}}
@@ -39,8 +44,8 @@ h2{margin:0}
 </style></head><body>
 <div id="login"><div style="font-size:20px">Lista de Presença</div><div>Digite o PIN</div><input id="pin" inputmode="numeric" maxlength="8" autofocus><button onclick="go()">Entrar</button><div id="err" style="color:#f99"></div></div>
 <header><div class="wm">Made by pedndoss</div><span class="live" id="live"><i></i><span>conectando</span></span><h1>Lista de Presença<span class="role" id="role"></span><button class="sair" onclick="sair()">Sair</button> · <select id="est" onchange="setEst(this.value)"><option>DSP5</option><option>DCP5</option></select> · <span id="data"></span></h1><div class="sub" id="upd"></div><div class="stats" id="stats"></div></header>
-<div class="bar"><input id="q" placeholder="Buscar nome ou rota" oninput="render()"><button id="addbtn" onclick="addRow()" style="display:none">+ Adicionar</button></div>
-<div id="list"></div><div id="enc"></div><div id="empty" style="display:none;padding:30px;text-align:center;color:#5a6a80">Lista ainda não carregada. Aguarde o dispatcher carregar a escala desta estação.</div>
+<div class="bar"><input id="q" placeholder="Buscar nome ou rota" oninput="render()"><button id="addbtn" onclick="addRow()" style="display:none">+ Adicionar</button><button id="impbtn" onclick="$('impfile').click()" style="display:none">Importar planilha</button><input type="file" id="impfile" accept=".csv,.xlsx,.xls" style="display:none" onchange="importar(this)"></div>
+<div id="imp" class="imp" style="display:none"></div><div id="list"></div><div id="enc"></div><div id="empty" style="display:none;padding:30px;text-align:center;color:#5a6a80">Lista ainda não carregada. Aguarde o dispatcher carregar a escala desta estação.</div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 const SB_URL='https://spuylttocotmljyrxdqa.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwdXlsdHRvY290bWxqeXJ4ZHFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2MTIxODYsImV4cCI6MjEwODE4ODE4Nn0.FW6wbqxO5rSkgUe8lU9WgVl2TVN-VotY3l_AUhAaR4I';
@@ -50,7 +55,7 @@ const hd=()=>({apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'appl
 const nowHM=()=>new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
 async function fetchRows(){const r=await fetch(SB_URL+'/rest/v1/lista?select=*&estacao=eq.'+EST+'&order=ord.asc',{headers:hd()});if(r.status===401||r.status===403)throw new Error('pin');if(!r.ok)throw new Error('net');return (await r.json()).map(x=>({id:x.id,rota:x.rota,hora:x.hora,dsp:x.dsp,nome:x.nome,reserva:x.reserva,status:x.status||'',marcadoEm:x.marcado_em||'',obs:x.obs||'',dia:x.dia,editado:!!x.editado}))}
 async function getRole(){const r=await fetch(SB_URL+'/rest/v1/rpc/papel',{method:'POST',headers:hd(),body:'{}'});if(!r.ok)throw new Error('net');const p=await r.json();if(p!=='lider'&&p!=='associado')throw new Error('pin');return p}
-function applyRole(){$('role').textContent=ROLE==='lider'?'Liderança':'Associado';$('addbtn').style.display=ROLE==='lider'?'':'none'}
+function applyRole(){$('role').textContent=ROLE==='lider'?'Liderança':'Associado';$('addbtn').style.display=ROLE==='lider'?'':'none';$('impbtn').style.display=ROLE==='lider'?'':'none'}
 async function enter(){ROLE=await getRole();const rows=await fetchRows();localStorage.setItem('pin',PIN);$('login').style.display='none';applyRole();S={rows};start()}
 async function go(){PIN=$('pin').value.trim();try{await enter()}catch(e){$('err').textContent='PIN inválido ou sem conexão'}}
 function sair(){localStorage.removeItem('pin');location.reload()}
@@ -88,6 +93,28 @@ function render(){if(!S)return;$('data').textContent=(S.rows[0]||{}).dia||'';$('
  $('empty').style.display=S.rows.length?'none':'block';
  const act=document.activeElement;if(act&&act.tagName==='INPUT'&&act.closest&&(act.closest('.obs')||act.closest('.ed')))return;$('list').innerHTML=h}
 
+const nz=t=>String(t??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+let IMP=[];
+async function importar(inp){const f=inp.files[0];inp.value='';if(!f)return;
+ if(!window.XLSX){alert('Biblioteca de planilha não carregou (rede bloqueada?). Tente em outra rede.');return}
+ try{const wb=/\.csv$/i.test(f.name)?XLSX.read(await f.text(),{type:'string'}):XLSX.read(await f.arrayBuffer(),{type:'array'});
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,blankrows:false,defval:''});
+  const byRota={};S.rows.forEach(r=>{if(r.rota)byRota[nz(r.rota)]=r});
+  IMP=[];const sem=[],nao=[];let iguais=0,semDA=0;
+  rows.forEach(l=>{const rota=String(l[1]||'').trim(),e=String(l[4]||'').trim();if(!rota||nz(rota)==='rota')return;
+   if(!e||/^n[aã]o atribu/i.test(e)||/^nenhum/i.test(e)){semDA++;return}
+   const pt=e.split(' / '),nome=pt[0].replace(/\s+/g,' ').trim(),dsp=(pt[1]||'').trim();
+   const r=byRota[nz(rota)];if(!r){nao.push(rota);return}
+   if(nz(r.nome)===nz(nome)){iguais++;return}
+   IMP.push({id:r.id,rota:r.rota,hora:r.hora,de:r.nome,para:nome,dsp,status:r.status})});
+  const cntN={};S.rows.forEach(r=>{if(!isX(r))cntN[nz(r.nome)]=(cntN[nz(r.nome)]||0)+1});IMP.forEach(c=>{cntN[nz(c.para)]=(cntN[nz(c.para)]||0)+1;});
+  IMP.forEach(c=>{c.dup=cntN[nz(c.para)]>1});
+  const it=IMP.map((c,i)=>`<label class="it"><input type="checkbox" checked data-i="${i}"><span><b>${esc(c.rota)}</b><br><small>${esc(c.hora)}</small></span><span><s>${esc(c.de)}</s> → <b>${esc(c.para)}</b>${c.dup?'<div class="warn">Este DA aparece em mais de uma rota.</div>':''}${c.status?`<div class="warn">Atenção: esta rota já estava marcada como ${esc(c.status)} para o DA anterior.</div>`:''}</span></label>`).join('');
+  $('imp').innerHTML=`<div class="box"><h3>Importar planilha</h3><div class="mut">${esc(f.name)}<br>${IMP.length} troca(s) a aplicar · ${iguais} já iguais${semDA?` · ${semDA} sem DA na planilha (ignoradas)`:''}${nao.length?` · rotas não encontradas no site: ${esc(nao.join(', '))}`:''}. Rota e horário não são alterados.</div>${it||'<div class="mut"><b>Nada a alterar.</b></div>'}<div class="acts"><button onclick="$('imp').style.display='none'">${IMP.length?'Cancelar':'Fechar'}</button>${IMP.length?'<button class="go" onclick="aplicarImp()">Aplicar selecionadas</button>':''}</div></div>`;
+  $('imp').style.display='flex'}catch(e){alert('Não consegui ler o arquivo: '+e.message)}}
+async function aplicarImp(){const sel=[...document.querySelectorAll('#imp input[data-i]:checked')].map(x=>IMP[+x.dataset.i]);if(!sel.length)return;
+ const rs=await Promise.all(sel.map(c=>patch(c.id,{nome:c.para,dsp:c.dsp||'',editado:true})));const ok=rs.filter(r=>r.ok).length;
+ $('imp').style.display='none';await poll();alert(ok+' de '+sel.length+' troca(s) aplicadas.')}
 let ENC={status:''};
 function setEst(v){EST=v;localStorage.setItem('est',v);S={rows:[]};ENC={status:''};render();renderEnc();poll()}
 $('est').value=EST;
