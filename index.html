@@ -16,9 +16,9 @@ h2{margin:0}
 .s0{--c:#1d5fd1}.s1{--c:#7a3fc4}.s2{--c:#0f8a7e}.s3{--c:#c25a12}.s4{--c:#b0275a}.sres{--c:#5b6677}
 .grp{border-left:6px solid;margin:0 0 4px;padding-top:6px;border-color:transparent}
 .grp.s0{border-color:#1d5fd1}.grp.s1{border-color:#7a3fc4}.grp.s2{border-color:#0f8a7e}.grp.s3{border-color:#c25a12}.grp.s4{border-color:#b0275a}.grp.sres{border-color:#5b6677}
-.row{display:grid;grid-template-columns:54px 46px 1fr auto;gap:8px;align-items:center;background:#fff;margin:0 8px 6px 10px;padding:10px 10px;border-radius:10px;border:1px solid #dfe4ec;border-left:6px solid #b9c2cf;box-shadow:0 1px 2px #0001}
+.row{display:grid;grid-template-columns:68px 1fr auto;gap:8px;align-items:center;background:#fff;margin:0 8px 6px 10px;padding:10px 10px;border-radius:10px;border:1px solid #dfe4ec;border-left:6px solid #b9c2cf;box-shadow:0 1px 2px #0001}
 .row.presente{border-left-color:#1f9d4c;background:#e3f6ea;border-color:#b6e2c5}.row.atrasado{border-left-color:#e08a00;background:#fff0cf;border-color:#f0d18a}
-.rota{font-weight:800;font-size:16px}.dsp{font-size:12px;color:#5a6a80}.nome{font-size:15px}.nome small{display:block;color:#7a8799;font-size:11px}
+.rota{font-weight:800;font-size:16px}.dsp{display:block;margin-top:3px;font-size:11px;font-weight:800;letter-spacing:.04em;color:#16253b;background:#e3e9f4;border-radius:6px;padding:1px 6px;text-align:center;width:max-content}.dsp:empty{display:none}.nome{font-size:15px}.nome small{display:block;color:#7a8799;font-size:11px}
 .btns{display:flex;gap:6px}.btns button{padding:10px 12px;border-radius:9px;border:1px solid #c5ccd6;background:#fff;font-size:14px;font-weight:600;min-width:84px}
 .btns .p{color:#17703a}.btns .a{color:#9a5b00}.btns .p.on{background:#1f9d4c;color:#fff;border-color:#1f9d4c}.btns .a.on{background:#e08a00;color:#fff;border-color:#e08a00}
 .obs{grid-column:1/-1}.addobs{background:none;border:0;color:#5a6a80;font-size:13px;padding:2px 0;text-decoration:underline;text-underline-offset:3px}.obs input{width:100%;padding:7px;border:1px solid #d6dce5;border-radius:8px;font-size:14px}
@@ -28,7 +28,7 @@ h2{margin:0}
 #enc{margin:16px 10px 40px;padding:14px;background:#fff;border-radius:12px;text-align:center;border:1px solid #d6dce5}#enc button{padding:12px 18px;border:0;border-radius:10px;background:#16253b;color:#fff;font-size:15px;font-weight:600}#enc .ok{color:#2e9d57;font-weight:600}#enc .wait{color:#b57a00;font-weight:600}#enc small{display:block;margin-top:6px;color:#7a8799}
 .role{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:#ffc266;color:#16253b;border-radius:10px;padding:2px 8px;margin-left:6px;vertical-align:middle}
 .sair{background:none;border:1px solid #ffffff66;color:#fff;border-radius:8px;font-size:12px;padding:2px 8px;margin-left:6px}
-.row.ed{grid-template-columns:72px 78px 1fr auto}
+.row.ed{grid-template-columns:72px 78px 74px 1fr auto}.row.ed input.f.d{text-transform:uppercase;text-align:center;font-weight:700}
 .row.ed input.f{width:100%;padding:7px;border:1px solid #d6dce5;border-radius:8px;font-size:15px;background:#fff}
 .row.ed input.f.n{font-weight:600}
 .row.ed .del{background:none;border:0;color:#b02a2a;font-size:13px;text-decoration:underline;padding:2px 0}
@@ -46,8 +46,8 @@ h2{margin:0}
 #timer.am .tt{color:#b57a00}#timer.am .pg i{background:#e08a00}#timer.rd{border-color:#d33;background:#fff4f4}#timer.rd .tt{color:#c11}#timer.rd .pg i{background:#d33}
 #snd{display:none;margin:8px 14px 0;padding:8px;background:#fff3cd;border-radius:8px;font-size:13px;text-align:center}
 .btns2{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
-@media(max-width:560px){.row.ed{grid-template-columns:64px 1fr;}.row.ed .btns{grid-column:1/-1}}
-@media(max-width:560px){.row{grid-template-columns:48px 1fr auto}.dsp{display:none}.row .hh{display:none}}
+@media(max-width:560px){.row.ed{grid-template-columns:1fr 1fr 1fr}.row.ed .nm,.row.ed .btns{grid-column:1/-1}}
+
 .wm{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#ffc266;opacity:.9;margin:-4px 0 4px;font-weight:600}
 </style></head><body>
 <div id="login"><div style="font-size:20px">Lista de Presença</div><div>Digite o PIN</div><input id="pin" inputmode="numeric" maxlength="8" autofocus><button onclick="go()">Entrar</button><div id="err" style="color:#f99"></div></div>
@@ -81,12 +81,12 @@ async function addRow(){const nome=prompt('Nome do motorista:');if(!nome)return;
 const OPEN=new Set();function openObs(id){OPEN.add(id);render();const i=document.querySelector('[data-o="'+id+'"]');if(i)i.focus()}
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function isX(r){return /^\(sem DA/.test(r.nome||'')}
-function rowX(r){if(ROLE==='lider')return rowL(r);return `<div class="row"><div class="rota">${esc(r.rota)||'—'}</div><div class="dsp">${esc(r.dsp)}</div><div class="nome">Sem DA atribuído<small>${esc(r.hora)}</small></div></div>`}
+function rowX(r){if(ROLE==='lider')return rowL(r);return `<div class="row"><div class="rota">${esc(r.rota)||'—'}<span class="dsp">${esc(r.dsp)}</span></div><div class="nome">Sem DA atribuído<small>${esc(r.hora)}</small></div></div>`}
 function rowL(r){const btn=`<div class="btns"><button class="p ${r.status==='presente'?'on':''}" onclick="setS('${r.id}','presente')">Presente</button><button class="a ${r.status==='atrasado'?'on':''}" onclick="setS('${r.id}','atrasado')">Atrasado</button></div>`;
  const f=(k,ph,c)=>`<input class="f ${c||''}" placeholder="${ph}" value="${esc(r[k])}" onfocus="editing=true" onblur="editing=false" onchange="ed('${r.id}','${k}',this.value)">`;
- return `<div class="row ed ${r.status}">${f('rota','Rota')}${f('hora','00:00')}${f('nome','Nome do DA','n')}${btn}
+ return `<div class="row ed ${r.status}">${f('rota','Rota')}${f('hora','00:00')}${f('dsp','DSP','d')}${f('nome','Nome do DA','n nm')}${btn}
 <div class="obs"><input data-o="${r.id}" placeholder="Observação" value="${esc(r.obs)}" onfocus="editing=true" onblur="editing=false" oninput="setO('${r.id}',this.value)" style="width:100%;padding:7px;border:1px solid #d6dce5;border-radius:8px;font-size:14px">${r.marcadoEm?`<small style="color:#7a8799">${r.status} às ${esc(r.marcadoEm)}</small> `:''}${r.id.includes('-x')?`<button class="del" onclick="delRow('${r.id}')">remover linha</button>`:''}</div></div>`}
-function rowH(r){if(ROLE==='lider')return rowL(r);return `<div class="row ${r.status}"><div class="rota">${esc(r.rota)||'—'}</div><div class="dsp">${esc(r.dsp)}</div><div class="nome">${esc(r.nome)}${r.marcadoEm?`<small>${r.status} às ${esc(r.marcadoEm)}</small>`:''}</div>
+function rowH(r){if(ROLE==='lider')return rowL(r);return `<div class="row ${r.status}"><div class="rota">${esc(r.rota)||'—'}<span class="dsp">${esc(r.dsp)}</span></div><div class="nome">${esc(r.nome)}${r.marcadoEm?`<small>${r.status} às ${esc(r.marcadoEm)}</small>`:''}</div>
 <div class="btns"><button class="p ${r.status==='presente'?'on':''}" onclick="setS('${r.id}','presente')">Presente</button><button class="a ${r.status==='atrasado'?'on':''}" onclick="setS('${r.id}','atrasado')">Atrasado</button></div>
 ${(r.obs||OPEN.has(r.id))?`<div class="obs"><input data-o="${r.id}" placeholder="Observação" value="${esc(r.obs)}" onfocus="editing=true" onblur="editing=false;if(!this.value)OPEN.delete('${r.id}');render()" oninput="setO('${r.id}',this.value)"></div>`:`<div class="obs"><button class="addobs" onclick="openObs('${r.id}')">+ Observação</button></div>`}</div>`}
 function render(){if(!S)return;$('data').textContent=(S.rows[0]||{}).dia||'';$('upd').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
