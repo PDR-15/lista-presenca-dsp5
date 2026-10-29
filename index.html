@@ -57,6 +57,7 @@ h2{margin:0}
 </style></head><body>
 <div id="login"><div style="font-size:20px">Lista de Presença</div><div>Digite o PIN</div><input id="pin" inputmode="numeric" maxlength="8" autofocus><button onclick="go()">Entrar</button><div id="err" style="color:#f99"></div></div>
 <header><div class="wm">Made by pedndoss</div><span class="live" id="live"><i></i><span>conectando</span></span><h1>Lista de Presença<span class="role" id="role"></span><button class="sair" onclick="sair()">Sair</button> · <select id="est" onchange="setEst(this.value)"><option>DSP5</option><option>DCP5</option></select> · <span id="data"></span></h1><div class="sub" id="upd"></div><div class="stats" id="stats"></div></header>
+<div id="newc" onclick="abrirNovo()" style="display:none;margin:8px 14px 0;padding:12px;background:#e08a00;color:#fff;border-radius:10px;text-align:center;font-weight:800;font-size:15px">Novo comunicado da liderança. Toque para abrir.</div>
 <nav class="tabs"><button id="tb1" class="on" onclick="setTab('lista')">Lista</button><button id="tb2" onclick="setTab('com')">Comunicação<span class="bd" id="bd" style="display:none"></span></button></nav>
 <div id="com"><div id="comform" style="display:none"><div class="lb">Novo comunicado para o associado (<span id="comest"></span>)</div><textarea id="ctx" placeholder="Escreva o comunicado com todos os detalhes. O associado responderá Sim ou Não."></textarea><button onclick="enviarCom()">Enviar comunicado</button></div><div id="comlist"></div></div>
 <div id="timer"><div><div class="lb">Timer da onda</div><div class="tt" id="tt">--:--</div></div><div class="pg"><i id="tp"></i></div><select id="tmin" onchange="timerMin(this.value)"><option value="15">15 min</option><option value="20">20 min</option></select><button id="tgo" class="go" onclick="timerStart()">Iniciar</button><button id="trs" onclick="timerStart()" style="display:none">Reiniciar</button><button id="tstop" onclick="timerStop()" style="display:none">Parar</button></div><div id="snd" onclick="audio();tick()">Toque aqui para ativar o som dos alertas neste aparelho</div>
@@ -78,10 +79,15 @@ function sair(){localStorage.removeItem('pin');location.reload()}
 $('pin').addEventListener('keydown',e=>{if(e.key==='Enter')go()});
 async function poll(){try{const rows=await fetchRows();await fetchEnc();renderEnc();lastOk=Date.now();S={rows};$('live').className='live on';$('live').lastChild.textContent='ao vivo';if(!editing)render();fetchCom()}catch(e){$('live').className='live';$('live').lastChild.textContent=e.message==='pin'?'PIN mudou':'reconectando'}}
 let TAB='lista',COM=[];
-function setTab(t){TAB=t;document.body.classList.toggle('tcom',t==='com');$('tb1').classList.toggle('on',t==='lista');$('tb2').classList.toggle('on',t==='com');if(t==='com')renderCom()}
+function setTab(t){TAB=t;document.body.classList.toggle('tcom',t==='com');$('tb1').classList.toggle('on',t==='lista');$('tb2').classList.toggle('on',t==='com');if(t==='com'){renderCom();$('newc').style.display='none'}}
 function fdt(x){return x?new Date(x).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}
+function avisoCom(){const k='cm_'+EST,mx=COM.reduce((m,c)=>Math.max(m,c.id),0),sv=localStorage.getItem(k);
+ if(sv===null){localStorage.setItem(k,mx);return}
+ if(mx>Number(sv)){if(ROLE!=='lider'){beep(3,0.25,660);$('newc').style.display='block';setTimeout(()=>{if($('newc').style.display==='block')beep(2,0.25,660)},15000)}localStorage.setItem(k,mx)}}
+function abrirNovo(){audio();$('newc').style.display='none';setTab('com')}
+document.addEventListener('click',audio);document.addEventListener('touchstart',audio,{passive:true});
 function updBadge(){const n=COM.filter(c=>!c.resposta).length,b=$('bd');b.style.display=n?'':'none';b.textContent=n}
-async function fetchCom(){try{const r=await fetch(SB_URL+'/rest/v1/comunicados?select=*&estacao=eq.'+EST+'&order=id.desc',{headers:hd()});if(!r.ok)return;COM=await r.json();updBadge();if(TAB==='com')renderCom()}catch(e){}}
+async function fetchCom(){try{const r=await fetch(SB_URL+'/rest/v1/comunicados?select=*&estacao=eq.'+EST+'&order=id.desc',{headers:hd()});if(!r.ok)return;COM=await r.json();avisoCom();updBadge();if(TAB==='com')renderCom()}catch(e){}}
 function renderCom(){$('comest').textContent=EST;$('comform').style.display=ROLE==='lider'?'':'none';const L=ROLE==='lider';
  $('comlist').innerHTML=COM.length?COM.map(c=>`<div class="cm ${c.resposta}"><div class="tx">${esc(c.texto)}</div><div class="mt">Enviado ${fdt(c.criado_em)} · <span class="st">${c.resposta==='sim'?'SIM':c.resposta==='nao'?'NÃO':'Aguardando resposta'}</span>${c.resposta?' em '+fdt(c.respondido_em):''}</div>
  <div class="ac">${L?`${c.resposta?`<button class="g" onclick="reabrirCom(${c.id})">Reabrir</button>`:''}<button class="g" onclick="delCom(${c.id})">Apagar</button>`:`<button class="y ${c.resposta==='sim'?'on':''}" onclick="respCom(${c.id},'sim')">Sim</button><button class="n ${c.resposta==='nao'?'on':''}" onclick="respCom(${c.id},'nao')">Não</button>`}</div></div>`).join(''):'<div style="padding:24px;text-align:center;color:#5a6a80">Nenhum comunicado para esta estação.</div>'}
