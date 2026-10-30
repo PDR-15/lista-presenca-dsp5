@@ -65,7 +65,7 @@ body.tcra #timer,body.tcra .bar,body.tcra #list,body.tcra #enc,body.tcra #empty,
 <header><div class="wm">Made by pedndoss</div><span class="live" id="live"><i></i><span>conectando</span></span><h1>Lista de Presença<span class="role" id="role"></span><button class="sair" onclick="sair()">Sair</button> · <select id="est" onchange="setEst(this.value)"><option>DSP5</option><option>DCP5</option></select> · <span id="data"></span></h1><div class="sub" id="upd"></div><div class="stats" id="stats"></div></header>
 <div id="newc" onclick="abrirNovo()" style="display:none;margin:8px 14px 0;padding:12px;background:#e08a00;color:#fff;border-radius:10px;text-align:center;font-weight:800;font-size:15px">Novo comunicado da liderança. Toque para abrir.</div>
 <nav class="tabs"><button id="tb1" class="on" onclick="setTab('lista')">Lista</button><button id="tb2" onclick="setTab('com')">Comunicação<span class="bd" id="bd" style="display:none"></span></button><button id="tb3" onclick="setTab('cra')">Crachá</button></nav>
-<div id="cra"><div class="scan"><div class="lb">Passe o crachá no leitor</div><input id="crin" autocomplete="off" autocapitalize="off" inputmode="none" placeholder="aguardando leitura"></div><div id="crres"></div><div id="crlog"></div></div>
+<div id="cra"><div class="scan"><div class="lb">Passe o crachá no leitor</div><input id="crin" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="toque aqui e passe o crachá"><button id="crok" type="button" style="margin-top:10px;width:100%;padding:12px;font-size:18px;border:0;border-radius:10px;background:#16253b;color:#fff;font-weight:700">OK / Buscar</button></div><div id="crres"></div><div id="crlog"></div></div>
 <div id="com"><div id="comform" style="display:none"><div class="lb">Novo comunicado para o associado (<span id="comest"></span>)</div><textarea id="ctx" placeholder="Escreva o comunicado com todos os detalhes. O associado responderá Sim ou Não."></textarea><button onclick="enviarCom()">Enviar comunicado</button></div><div id="comlist"></div></div>
 <div id="timer"><div><div class="lb">Timer da onda</div><div class="tt" id="tt">--:--</div></div><div class="pg"><i id="tp"></i></div><select id="tmin" onchange="timerMin(this.value)"><option value="15">15 min</option><option value="20">20 min</option></select><button id="tgo" class="go" onclick="timerStart()">Iniciar</button><button id="trs" onclick="timerStart()" style="display:none">Reiniciar</button><button id="tstop" onclick="timerStop()" style="display:none">Parar</button></div><div id="snd" onclick="audio();tick()">Toque aqui para ativar o som dos alertas neste aparelho</div>
 <div class="bar"><input id="q" placeholder="Buscar nome ou rota" oninput="render()"><button id="addbtn" onclick="addRow()" style="display:none">+ Adicionar</button><button id="impbtn" onclick="$('impfile').click()" style="display:none">Importar planilha</button><input type="file" id="impfile" accept=".csv,.xlsx,.xls" style="display:none" onchange="importar(this)"></div>
@@ -115,8 +115,12 @@ async function crScan(v){const code=String(v||'').trim();if(!code)return;await l
  const row=findRow(c);if(!row){crFail(code,c,'Não está na lista de hoje');return}
  if(row.status){crShow('ja',row.nome,`Rota <b>${esc(row.rota)||'—'}</b>`,`<div class="big">${esc(row.hora)||'--:--'}</div><div class="sb">Já estava marcado como ${esc(row.status)} às ${esc(row.marcadoEm)}</div>`);crLog(nowHM(),row.nome,'ja');beep(1,0.08,660);return}
  crMark(row)}
-document.addEventListener('keydown',e=>{if(e.target&&e.target.id==='crin'&&e.key==='Enter'){const v=e.target.value;e.target.value='';crScan(v)}});
-document.addEventListener('click',e=>{if(TAB==='cra'&&!e.target.closest('.crf')&&!e.target.closest('nav')&&$('crin'))$('crin').focus()});
+let CRT=null;function crSubmit(){clearTimeout(CRT);const i=$('crin');const v=(i.value||'').trim();i.value='';if(v)crScan(v)}
+document.addEventListener('keydown',e=>{if(e.target&&e.target.id==='crin'&&(e.key==='Enter'||e.key==='Tab'||e.keyCode===13||e.keyCode===9)){e.preventDefault();crSubmit()}});
+document.addEventListener('input',e=>{if(e.target&&e.target.id==='crin'){clearTimeout(CRT);if(e.target.value.trim().length>=5)CRT=setTimeout(crSubmit,400)}});
+document.addEventListener('change',e=>{if(e.target&&e.target.id==='crin')crSubmit()});
+document.addEventListener('click',e=>{if(e.target&&e.target.id==='crok')crSubmit()});
+
 function fdt(x){return x?new Date(x).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}
 function avisoCom(){const k='cm_'+EST,mx=COM.reduce((m,c)=>Math.max(m,c.id),0),sv=localStorage.getItem(k);
  if(sv===null){localStorage.setItem(k,mx);return}
