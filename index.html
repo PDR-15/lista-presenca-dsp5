@@ -174,6 +174,8 @@ function render(){if(!S)return;$('data').textContent=(S.rows[0]||{}).dia||'';$('
  const q=$('q').value.toLowerCase();const rows=S.rows.filter(r=>!q||(r.nome+' '+r.rota).toLowerCase().includes(q));
  const base=S.rows.filter(r=>!isX(r)&&!r.flex);const c=k=>base.filter(r=>r.status===k).length,tot=base.length;
  $('stats').innerHTML=`<span class="chip">Total <b>${tot}</b></span><span class="chip">Presentes <b>${c('presente')}</b></span><span class="chip">Atrasados <b>${c('atrasado')}</b></span><span class="chip">Pendentes <b>${tot-c('presente')-c('atrasado')}</b></span>`;
+ const rt=S.rows.filter(r=>!r.reserva&&!isX(r)&&!r.flex),at=rt.filter(r=>r.status==='atrasado').length,nrt=rt.length,otd=nrt?(1-at/nrt)*100:100,perm=Math.floor(nrt*0.05+1e-9),folga=perm-at,oc=otd<95?'#c0392b':(folga<=0?'#d49a00':'#1f9d55');
+ $('stats').innerHTML+=`<span class="chip" style="background:${oc};font-weight:700" title="OTD prévio = 100% menos os atrasos sobre o total de rotas. Meta 95%.">OTD prévio <b>${otd.toFixed(1).replace('.',',')}%</b> · meta 95% · ${folga>=0?'folga '+folga+' atraso'+(folga===1?'':'s'):'estourou por '+(-folga)} <small>(${at}/${nrt} rotas)</small></span>`;
  const g={};rows.filter(r=>!r.reserva&&!isX(r)&&!r.flex).forEach(r=>(g[r.hora||'?']=g[r.hora||'?']||[]).push(r));
  let h='';const cnt=a=>({p:a.filter(r=>r.status==='presente').length,a:a.filter(r=>r.status==='atrasado').length,n:a.length});
  const hdr=(cls,k,sub,a)=>{const c=cnt(a),ok=c.p+c.a;return `<div class="slot ${cls}"><div class="t"><small>${sub}</small>${k}</div><div class="c"><b>${ok}/${c.n}</b> chegaram<br>${c.p} presentes · ${c.a} atrasados</div></div>`};
